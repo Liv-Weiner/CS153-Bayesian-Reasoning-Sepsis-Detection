@@ -710,6 +710,29 @@ def page_symptoms() -> None:
 # VITAL SIGNS MONITOR
 # ═════════════════════════════════════════════════════════════════════════════
 
+@st.cache_data(show_spinner=False)
+def _predict_sepsis(hr, temp, wbc, lactate, sbp, rr, spo2, _model, _scaler):
+    """
+    Cached MC-dropout sepsis prediction.
+
+    Vital sign values are passed as plain floats so Streamlit can hash them as
+    the cache key.  ``_model`` and ``_scaler`` are prefixed with ``_`` so
+    Streamlit skips hashing them (they are constant across the session).
+
+    Uses n_samples=20 — sufficient for a stable posterior mean and 95% CI while
+    keeping latency under ~0.5 s on CPU.  The full 80-sample run used during
+    training is not needed for interactive display.
+    """
+    raw = np.array(
+        [NORMAL_BL] * 47 + [[hr, temp, wbc, lactate, sbp, rr, spo2]],
+        dtype=np.float32,
+    )
+    sc = _scaler.transform(raw)
+    x  = torch.tensor(sc[np.newaxis], dtype=torch.float32)
+    m, s = _model.mc_predict(x, n_samples=20)
+    return float(m[0, -1]), float(s[0, -1])
+
+
 def page_vitals(model: BayesianLSTM, scaler) -> None:
     """
     Render the Vital Signs Monitor tab.
@@ -768,16 +791,13 @@ def page_vitals(model: BayesianLSTM, scaler) -> None:
                 vals = vital_sliders("sepsis", "sep")
 
             with R:
-                # Build 48-step sequence: 47 normal baselines + 1 current observation
-                raw = np.array(
-                    [NORMAL_BL] * 47 + [[vals[v] for v in VITALS]],
-                    dtype=np.float32,
+                # Cached MC prediction — reruns only when a vital value changes.
+                # Findings are computed from the same vals dict so they stay in sync.
+                prob, std = _predict_sepsis(
+                    vals["HR"], vals["Temp"], vals["WBC"], vals["Lactate"],
+                    vals["SBP"], vals["RR"], vals["SpO2"],
+                    model, scaler,
                 )
-                sc    = scaler.transform(raw)
-                x     = torch.tensor(sc[np.newaxis], dtype=torch.float32)   # (1, 48, 7)
-                m, s  = model.mc_predict(x, n_samples=80)
-                prob  = float(m[0, -1])   # risk at the final time step
-                std   = float(s[0, -1])
                 level = "HIGH" if prob >= 0.55 else "MODERATE" if prob >= 0.30 else "LOW"
 
                 render_risk_block(prob, std, level, "Sepsis Risk Score", meta["model_note"])
