@@ -7,7 +7,12 @@
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C?style=flat&logo=pytorch&logoColor=white)
 ![Stanford CS153](https://img.shields.io/badge/Stanford-CS153-8C1515?style=flat)
 
+[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://healthwatch-cs153.streamlit.app/)
+
 > Built by **Liv Weiner** · Stanford CS153: Frontier Systems · 2025
+>
+> 
+🚀 **[Try the live demo → healthwatch-cs153.streamlit.app](https://healthwatch-cs153.streamlit.app/)**
 
 HealthWatch helps healthcare workers, community health workers, and first responders pre-assess potential diagnoses from symptoms and bedside vital signs — before any laboratory result is available. Built with low-resource clinical settings in mind, it covers the leading causes of preventable death in low- and middle-income countries (LMICs).
 
